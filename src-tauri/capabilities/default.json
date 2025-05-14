@@ -6,6 +6,12 @@
   "permissions": [
     "core:default",
     "positioner:default",
-    "core:window:allow-set-visible-on-all-workspaces"
+    "core:window:allow-set-visible-on-all-workspaces",
+    "shell:allow-open",
+    "sql:default",
+    "sql:allow-load",
+    "sql:allow-execute",
+    "sql:allow-select",
+    "sql:allow-close"
   ]
 }

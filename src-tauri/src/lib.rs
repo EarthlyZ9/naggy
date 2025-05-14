@@ -1,9 +1,9 @@
 use tauri::{
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}, Manager,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Manager,
 };
-
-use tauri_plugin_positioner::{WindowExt, Position};
-
+use tauri_plugin_positioner::{Position, WindowExt};
+use tauri_plugin_sql::{Migration, MigrationKind};  
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -13,7 +13,28 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let migrations = vec![  
+        Migration {  
+            version: 1,  
+            description: "create task table",  
+            sql: "CREATE TABLE IF NOT EXISTS task (  
+                id INTEGER PRIMARY KEY AUTOINCREMENT,  
+                description TEXT NOT NULL,  
+                scheduled_at TEXT NOT NULL DEFAULT (DATETIME('now')),
+                resolved BOOLEAN NOT NULL DEFAULT 0        
+            );",  
+            kind: MigrationKind::Up,  
+        }  
+    ];  
+
+
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_sql::Builder::default()
+                .add_migrations("sqlite:test.db", migrations)
+                .build()
+        )
+        .plugin(tauri_plugin_shell::init())  
         .plugin(tauri_plugin_positioner::init())
         .setup(|app| {
             {
@@ -28,13 +49,16 @@ pub fn run() {
                                 button_state: MouseButtonState::Up,
                                 ..
                             } => {
-                                 println!("Tray icon clicked");
-                                if let Some(win) = tray_handle.app_handle().get_webview_window("main") {
+                                println!("Tray icon clicked");
+                                if let Some(win) =
+                                    tray_handle.app_handle().get_webview_window("main")
+                                {
                                     if win.is_visible().unwrap_or(false) {
                                         let _ = win.hide();
                                     } else {
                                         // TODO: fullscreen 일 때 처리
-                                        let _ = win.as_ref().window().move_window(Position::TopRight);
+                                        let _ =
+                                            win.as_ref().window().move_window(Position::TopRight);
                                         let _ = win.show();
                                         let _ = win.set_focus();
                                     }

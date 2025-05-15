@@ -4,6 +4,10 @@ use tauri::{
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 use tauri_plugin_sql::{Migration, MigrationKind};  
+use sqlx::{SqlitePool};
+use tokio::runtime::Runtime;
+
+mod commands;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -25,8 +29,7 @@ pub fn run() {
             );",  
             kind: MigrationKind::Up,  
         }  
-    ];  
-
+    ];
 
     tauri::Builder::default()
         .plugin(
@@ -38,10 +41,22 @@ pub fn run() {
         .plugin(tauri_plugin_positioner::init())
         .setup(|app| {
             {
+                // DB 설정
+                let app_handle = app.handle();
+                let mut data_path = app_handle.path().app_data_dir().unwrap();
+                data_path.push("test.db");
+                let db_url = format!("sqlite://{}", data_path.display());
+                let runtime = Runtime::new().expect("Failed to create Tokio runtime");
+                let pool = runtime.block_on(async {
+                    SqlitePool::connect(&db_url).await.expect("Failed to connect DB")
+                });
+                app.manage(pool);
+
                 // Accessory 모드로 설정
                 app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
-                let _tray_icon = TrayIconBuilder::new()
+                // TrayIcon 설정
+                TrayIconBuilder::new()
                     .on_tray_icon_event(|tray_handle, event| {
                         match event {
                             TrayIconEvent::Click {
@@ -84,7 +99,7 @@ pub fn run() {
                 let _ = window.hide();
             }
         })
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![commands::get_tasks, greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

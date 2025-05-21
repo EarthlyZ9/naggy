@@ -14,7 +14,7 @@ pub struct Task {
 pub async fn get_tasks(pool: State<'_, SqlitePool>) -> Result<Vec<Task>, String> {
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
-    let rows = sqlx::query("SELECT id, description, scheduled_at, resolved FROM task")
+    let rows = sqlx::query("SELECT id, description, scheduled_at, resolved FROM task WHERE resolved = 0")
         .fetch_all(&mut *tx)
         .await
         .map_err(|e| e.to_string())?;

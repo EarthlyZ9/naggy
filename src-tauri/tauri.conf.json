@@ -10,15 +10,20 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "naggy",
-        "width": 600,
+        "width": 500,
         "height": 400,
+        "minHeight": 400,
         "decorations": false,
         "resizable": false,
         "alwaysOnTop": true,
-        "visible": false
+        "visible": true,
+        "transparent": true,
+        "visibleOnAllWorkspaces": true,
+        "shadow": false
       }
     ],
     "security": {

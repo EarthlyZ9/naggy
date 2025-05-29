@@ -25,7 +25,7 @@ function TaskCard({ task, onResolved }: { task: Task; onResolved: (taskId: numbe
                 <div className="flex justify-start w-[400px] px-4">
                     <p>{task.description}</p>
                 </div>
-                <Button onClick={() => resolveTask(task.id)}>✅</Button>
+                <Button variant='ghost'  onClick={() => resolveTask(task.id)}>✅</Button>
             </CardContent>
         </Card>
     );

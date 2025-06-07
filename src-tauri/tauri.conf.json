@@ -20,10 +20,10 @@
         "decorations": false,
         "resizable": false,
         "alwaysOnTop": true,
-        "visible": true,
+        "visible": false,
         "transparent": true,
         "visibleOnAllWorkspaces": true,
-        "shadow": false
+        "shadow": true
       }
     ],
     "security": {
@@ -43,7 +43,7 @@
   },
   "plugins": {
     "sql": {
-      "preload": ["sqlite:test.db"]
+      "preload": ["sqlite:test.db", "sqlite:naggy.db"]
     }
   }
 }

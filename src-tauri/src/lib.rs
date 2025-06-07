@@ -1,10 +1,10 @@
+use sqlx::SqlitePool;
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager,
 };
 use tauri_plugin_positioner::{Position, WindowExt};
-use tauri_plugin_sql::{Migration, MigrationKind};  
-use sqlx::{SqlitePool};
+use tauri_plugin_sql::{Migration, MigrationKind};
 use tokio::runtime::Runtime;
 
 mod commands;
@@ -17,38 +17,50 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let migrations = vec![  
-        Migration {  
-            version: 1,  
-            description: "create task table",  
-            sql: "CREATE TABLE IF NOT EXISTS task (  
+    let migrations = vec![Migration {
+        version: 1,
+        description: "create task table",
+        sql: "CREATE TABLE IF NOT EXISTS task (  
                 id INTEGER PRIMARY KEY AUTOINCREMENT,  
                 description TEXT NOT NULL,  
                 scheduled_at TEXT NOT NULL DEFAULT (DATETIME('now')),
                 resolved BOOLEAN NOT NULL DEFAULT 0        
-            );",  
-            kind: MigrationKind::Up,  
-        }  
-    ];
+            );",
+        kind: MigrationKind::Up,
+    }];
 
     tauri::Builder::default()
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:test.db", migrations)
-                .build()
+                .build(),
         )
-        .plugin(tauri_plugin_shell::init())  
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_positioner::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             {
                 // DB 설정
                 let app_handle = app.handle();
-                let mut data_path = app_handle.path().app_data_dir().unwrap();
-                data_path.push("test.db");
-                let db_url = format!("sqlite://{}", data_path.display());
+                let db_path = if cfg!(debug_assertions) {
+                    // 개발 환경: src-tauri/test.db 사용
+                    let mut path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                    path.push("test.db");
+                    println!("Using database at: {}", path.display());
+                    path
+                } else {
+                    // 배포 환경: app_data_dir/naggy.db 사용
+                    let mut path = app_handle.path().app_data_dir().unwrap();
+                    path.push("naggy.db");
+                    path
+                };
+
+                let db_url = format!("sqlite://{}", db_path.display());
                 let runtime = Runtime::new().expect("Failed to create Tokio runtime");
                 let pool = runtime.block_on(async {
-                    SqlitePool::connect(&db_url).await.expect("Failed to connect DB")
+                    SqlitePool::connect(&db_url)
+                        .await
+                        .expect("Failed to connect DB")
                 });
                 app.manage(pool);
 
@@ -57,30 +69,25 @@ pub fn run() {
 
                 // TrayIcon 설정
                 TrayIconBuilder::new()
-                    .on_tray_icon_event(|tray_handle, event| {
-                        match event {
-                            TrayIconEvent::Click {
-                                button: MouseButton::Left,
-                                button_state: MouseButtonState::Up,
-                                ..
-                            } => {
-                                println!("Tray icon clicked");
-                                if let Some(win) =
-                                    tray_handle.app_handle().get_webview_window("main")
-                                {
-                                    if win.is_visible().unwrap_or(false) {
-                                        let _ = win.hide();
-                                    } else {
-                                        // TODO: fullscreen 일 때 처리
-                                        let _ =
-                                            win.as_ref().window().move_window(Position::TopRight);
-                                        let _ = win.show();
-                                        let _ = win.set_focus();
-                                    }
+                    .on_tray_icon_event(|tray_handle, event| match event {
+                        TrayIconEvent::Click {
+                            button: MouseButton::Left,
+                            button_state: MouseButtonState::Up,
+                            ..
+                        } => {
+                            println!("Tray icon clicked");
+                            if let Some(win) = tray_handle.app_handle().get_webview_window("main") {
+                                if win.is_visible().unwrap_or(false) {
+                                    let _ = win.hide();
+                                } else {
+                                    // TODO: fullscreen 일 때 처리
+                                    let _ = win.move_window(Position::TopRight);
+                                    let _ = win.show();
+                                    let _ = win.set_focus();
                                 }
                             }
-                            _ => {}
                         }
+                        _ => {}
                     })
                     .icon(app.default_window_icon().unwrap().clone())
                     .build(app)?;
@@ -99,7 +106,11 @@ pub fn run() {
                 let _ = window.hide();
             }
         })
-        .invoke_handler(tauri::generate_handler![commands::get_tasks, greet])
+        .invoke_handler(tauri::generate_handler![
+            commands::get_tasks,
+            greet,
+            commands::reserve_notification
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

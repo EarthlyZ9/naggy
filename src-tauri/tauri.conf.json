@@ -20,7 +20,7 @@
         "decorations": false,
         "resizable": false,
         "alwaysOnTop": true,
-        "visible": false,
+        "visible": true,
         "transparent": true,
         "visibleOnAllWorkspaces": true,
         "shadow": true

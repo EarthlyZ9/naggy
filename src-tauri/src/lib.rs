@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 use tauri::{
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    tray::{MouseButton, MouseButtonState, TrayIconEvent},
     Manager,
 };
 use tauri_plugin_positioner::{Position, WindowExt};
@@ -64,33 +64,16 @@ pub fn run() {
                 });
                 app.manage(pool);
 
-                // Accessory 모드로 설정
-                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
-
                 // TrayIcon 설정
-                TrayIconBuilder::new()
-                    .on_tray_icon_event(|tray_handle, event| match event {
-                        TrayIconEvent::Click {
-                            button: MouseButton::Left,
-                            button_state: MouseButtonState::Up,
-                            ..
-                        } => {
-                            println!("Tray icon clicked");
-                            if let Some(win) = tray_handle.app_handle().get_webview_window("main") {
-                                if win.is_visible().unwrap_or(false) {
-                                    let _ = win.hide();
-                                } else {
-                                    // TODO: fullscreen 일 때 처리
-                                    let _ = win.move_window(Position::TopRight);
-                                    let _ = win.show();
-                                    let _ = win.set_focus();
-                                }
-                            }
-                        }
-                        _ => {}
+                tauri::tray::TrayIconBuilder::new()
+                    .on_tray_icon_event(|tray_handle, event| {
+                        tauri_plugin_positioner::on_tray_event(tray_handle.app_handle(), &event);
                     })
                     .icon(app.default_window_icon().unwrap().clone())
                     .build(app)?;
+
+                // Accessory 모드로 설정
+                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             }
             Ok(())
         })
@@ -105,6 +88,29 @@ pub fn run() {
                 println!("Window destroyed");
                 let _ = window.hide();
             }
+        })
+        .on_tray_icon_event(|tray_handle, event| match event {
+            TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } => {
+                println!("Tray icon clicked");
+                if let Some(win) = tray_handle.app_handle().get_webview_window("main") {
+                    if win.is_visible().unwrap_or(false) {
+                        let _ = win.hide();
+                    } else {
+                        // TODO: fullscreen 일 때 처리
+                        let _ = win
+                            .as_ref()
+                            .window()
+                            .move_window(Position::TrayBottomCenter);
+                        let _ = win.show();
+                        let _ = win.set_focus();
+                    }
+                }
+            }
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_tasks,

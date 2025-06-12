@@ -1,7 +1,7 @@
 interface Task {
     id: number;
     description: string;
-    scheduled_at: string;
+    scheduledAt: string;  // ISO string format for date
     resolved: boolean;
   }
 

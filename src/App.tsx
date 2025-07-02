@@ -16,6 +16,7 @@ import { Task } from "./types";
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import Navbar from "./components/Navbar";
 
 const formSchema = z.object({
   time: z.string().min(1),
@@ -68,8 +69,7 @@ function App() {
       const updated = [...prevTasks, newTask];
       updated.sort(
         (a, b) =>
-          new Date(a.scheduledAt).getTime() -
-          new Date(b.scheduledAt).getTime()
+          new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
       );
       return updated;
     });
@@ -77,9 +77,7 @@ function App() {
 
   async function resolveTask(taskId: number) {
     await invoke("resolve_task", { id: taskId });
-    setTasks((prevTasks) =>
-      prevTasks.filter((task) => task.id !== taskId)
-    );
+    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
   }
 
   async function removeTask(taskId: number) {
@@ -89,9 +87,7 @@ function App() {
 
   return (
     <main className="container">
-      <div className="flex flex-row h-[40px] w-full justify-between bg-gray-700">
-        <p>Naggy~</p>
-      </div>
+      <Navbar />
       <div className="p-2">
         <Form {...form}>
           <form
@@ -144,7 +140,11 @@ function App() {
           </form>
         </Form>
         <Separator className="m-3" />
-        <TaskList tasks={tasks} taskResolver={resolveTask} taskRemover={removeTask}/>
+        <TaskList
+          tasks={tasks}
+          taskResolver={resolveTask}
+          taskRemover={removeTask}
+        />
       </div>
     </main>
   );

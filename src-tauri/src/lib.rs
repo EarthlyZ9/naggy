@@ -15,6 +15,11 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+#[cfg(debug_assertions)]
+const DB_FILE_NAME: &str = "test.db";
+#[cfg(not(debug_assertions))]
+const DB_FILE_NAME: &str = "naggy.db";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let migrations = vec![Migration {
@@ -32,7 +37,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(
             tauri_plugin_sql::Builder::default()
-                .add_migrations("sqlite:test.db", migrations)
+                .add_migrations(&format!("sqlite:{}", DB_FILE_NAME), migrations)
                 .build(),
         )
         .plugin(tauri_plugin_shell::init())
@@ -42,20 +47,10 @@ pub fn run() {
             {
                 // DB 설정
                 let app_handle = app.handle();
-                let db_path = if cfg!(debug_assertions) {
-                    // 개발 환경: src-tauri/test.db 사용
-                    let mut path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                    path.push("test.db");
-                    println!("Using database at: {}", path.display());
-                    path
-                } else {
-                    // 배포 환경: app_data_dir/naggy.db 사용
-                    let mut path = app_handle.path().app_data_dir().unwrap();
-                    path.push("naggy.db");
-                    path
-                };
+                let mut path = app_handle.path().app_data_dir().unwrap();
+                path.push(DB_FILE_NAME);
 
-                let db_url = format!("sqlite://{}", db_path.display());
+                let db_url = format!("sqlite://{}", path.display());
                 let runtime = Runtime::new().expect("Failed to create Tokio runtime");
                 let pool = runtime.block_on(async {
                     SqlitePool::connect(&db_url)
@@ -115,7 +110,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_tasks,
             greet,
-            commands::reserve_notification
+            commands::reserve_notification,
+            commands::add_task,
+            commands::resolve_task,
+            commands::remove_task,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

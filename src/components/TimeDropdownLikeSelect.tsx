@@ -91,7 +91,7 @@ export function TimeDropdownLikeSelect({ field }: { field: any }) {
                 <PopoverContent
                   side="right"
                   align="center"
-                  className="w-[120px] p-0"
+                  className="p-0 w-[90px]"
                   onMouseEnter={() => setCustomPopoverOpen(true)}
                   onMouseLeave={() => setCustomPopoverOpen(false)}
                 >
@@ -101,7 +101,7 @@ export function TimeDropdownLikeSelect({ field }: { field: any }) {
                     value={formatTimeInput(inputValue)}
                     onChange={handleTimeInputChange}
                     onKeyDown={handleTimeInputKeyDown}
-                    className="w-[90px] h-8 text-xs text-center"
+                    className="w-inherit h-8 text-xs text-center"
                     autoFocus
                   />
                 </PopoverContent>

@@ -1,10 +1,18 @@
-import { Task } from "@/types";
-import TaskCard from "./TaskCard";
+import { Task } from '@/types';
+import TaskCard from './TaskCard';
 
-function TaskList({tasks, taskResolver, taskRemover}: { tasks: Task[], taskResolver: (taskId: number) => Promise<void>, taskRemover: (taskId: number) => Promise<void> }) {
+function TaskList({
+  tasks,
+  taskResolver,
+  taskRemover,
+}: {
+  tasks: Task[];
+  taskResolver: (taskId: number) => Promise<void>;
+  taskRemover: (taskId: number) => Promise<void>;
+}) {
   // remove task from the list
   const handleResolve = async (taskId: number) => {
-      await taskResolver(taskId);
+    await taskResolver(taskId);
   };
 
   const handleRemove = async (taskId: number) => {

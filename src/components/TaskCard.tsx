@@ -1,8 +1,8 @@
-import { Task } from "@/types";
-import { Button } from "./ui/button";
-import { Card, CardContent } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { useMemo } from "react";
+import { Task } from '@/types';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
+import { Badge } from './ui/badge';
+import { useMemo } from 'react';
 
 function TaskCard({
   task,
@@ -13,36 +13,26 @@ function TaskCard({
   onResolved: (taskId: number) => Promise<void>;
   onRemove: (taskId: number) => Promise<void>;
 }) {
-
   const formatDateTime = (dtStr: string) => {
     const localTime = new Date(dtStr);
-    return (
-      localTime.getHours().toString() + ":" + localTime.getMinutes().toString()
-    );
+    return localTime.getHours().toString() + ':' + localTime.getMinutes().toString();
   };
 
   const getBadgeStyle = (scheduledAt: string) => {
     const now = new Date();
     const scheduled = new Date(scheduledAt);
     const diffMinutes = (now.getTime() - scheduled.getTime()) / 60000;
-    if (diffMinutes >= 10) return "bg-red-400";
-    if (diffMinutes >= 0) return "bg-yellow-300";
-    return "";
+    if (diffMinutes >= 10) return 'bg-red-400';
+    if (diffMinutes >= 0) return 'bg-yellow-300';
+    return '';
   };
 
-  const badgeStyle = useMemo(
-    () => getBadgeStyle(task.scheduledAt),
-    [task.scheduledAt]
-  );
+  const badgeStyle = useMemo(() => getBadgeStyle(task.scheduledAt), [task.scheduledAt]);
 
   return (
     <Card className="gap-2 px-1 py-[2px] my-1">
       <CardContent className="flex flex-row items-center justify-between">
-        <Badge
-          className={`w-[50px] ${badgeStyle}`}
-          variant="outline"
-          asChild={true}
-        >
+        <Badge className={`w-[50px] ${badgeStyle}`} variant="outline" asChild={true}>
           <p className="text-black text-sm">{formatDateTime(task.scheduledAt)}</p>
         </Badge>
         <div className="flex justify-start w-[400px] px-4">
@@ -57,11 +47,7 @@ function TaskCard({
             stroke="currentColor"
             className="size-4"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="m4.5 12.75 6 6 9-13.5"
-            />
+            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
           </svg>
         </Button>
         <Button variant="ghost" onClick={() => onRemove(task.id)}>

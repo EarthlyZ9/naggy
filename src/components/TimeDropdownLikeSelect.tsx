@@ -4,16 +4,19 @@ import { Input } from '@/components/ui/input';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
+import { TIME_PRESETS } from '@/types';
 
 export function TimeDropdownLikeSelect({ field }: { field: any }) {
   const [open, setOpen] = useState(false);
   const [customPopoverOpen, setCustomPopoverOpen] = useState(false);
   const [inputValue, setInputValue] = useState('1200');
+  const [isInvalid, setIsInvalid] = useState(false);
 
   const handleSelect = (val: string) => {
     field.onChange(val);
     setOpen(false);
     setCustomPopoverOpen(false);
+    setIsInvalid(false);
   };
 
   const formatTimeInput = (value: string) => {
@@ -28,21 +31,34 @@ export function TimeDropdownLikeSelect({ field }: { field: any }) {
     return limited.slice(0, 2) + ':' + limited.slice(2);
   };
 
+  const validateTime = (value: string): boolean => {
+    if (value.length < 4) return false;
+
+    const hours = parseInt(value.slice(0, 2) || '0', 10);
+    const minutes = parseInt(value.slice(2, 4) || '0', 10);
+
+    return hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60;
+  };
+
   const handleTimeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const numericOnly = e.target.value.replace(/\D/g, '');
-    setInputValue(numericOnly.slice(0, 4));
+    const limited = numericOnly.slice(0, 4);
+    setInputValue(limited);
+
+    if (limited.length === 4) {
+      setIsInvalid(!validateTime(limited));
+    } else {
+      setIsInvalid(false);
+    }
   };
 
   const handleTimeInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && isInvalid === false) {
       const hours = parseInt(inputValue.slice(0, 2) || '0', 10);
       const minutes = parseInt(inputValue.slice(2, 4) || '0', 10);
 
-      // Validate time (00:00 to 23:59)
-      if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
-        const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        handleSelect(formattedTime);
-      }
+      const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      handleSelect(formattedTime);
     }
   };
 
@@ -68,10 +84,18 @@ export function TimeDropdownLikeSelect({ field }: { field: any }) {
       <PopoverContent className="w-[120px] p-0">
         <Command>
           <CommandGroup>
-            <CommandItem onSelect={() => handleSelect('10min')}>10min</CommandItem>
-            <CommandItem onSelect={() => handleSelect('30min')}>30min</CommandItem>
-            <CommandItem onSelect={() => handleSelect('1hour')}>1hour</CommandItem>
-            <CommandItem onSelect={() => handleSelect('3hour')}>3hour</CommandItem>
+            <CommandItem onSelect={() => handleSelect(TIME_PRESETS.TEN_MIN)}>
+              {TIME_PRESETS.TEN_MIN}
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect(TIME_PRESETS.THIRTY_MIN)}>
+              {TIME_PRESETS.THIRTY_MIN}
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect(TIME_PRESETS.ONE_HOUR)}>
+              {TIME_PRESETS.ONE_HOUR}
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect(TIME_PRESETS.THREE_HOUR)}>
+              {TIME_PRESETS.THREE_HOUR}
+            </CommandItem>
             <div
               onMouseEnter={() => setCustomPopoverOpen(true)}
               onMouseLeave={() => setCustomPopoverOpen(false)}
@@ -101,7 +125,10 @@ export function TimeDropdownLikeSelect({ field }: { field: any }) {
                     value={formatTimeInput(inputValue)}
                     onChange={handleTimeInputChange}
                     onKeyDown={handleTimeInputKeyDown}
-                    className="w-inherit h-8 text-xs text-center"
+                    className={clsx(
+                      'w-inherit h-8 text-xs text-center',
+                      isInvalid && 'border-red-400 focus-visible:ring-red-400 focus-visible:ring-2'
+                    )}
                     autoFocus
                   />
                 </PopoverContent>

@@ -21,10 +21,7 @@ function TaskCard({
   const getBadgeStyle = (scheduledAt: string) => {
     const now = new Date();
     const scheduled = new Date(scheduledAt);
-    const diffMinutes = (now.getTime() - scheduled.getTime()) / 60000;
-    if (diffMinutes >= 10) return 'bg-red-400';
-    if (diffMinutes >= 0) return 'bg-yellow-300';
-    return '';
+    return now > scheduled ? 'bg-red-400' : '';
   };
 
   const badgeStyle = useMemo(() => getBadgeStyle(task.scheduledAt), [task.scheduledAt]);

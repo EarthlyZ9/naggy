@@ -1,0 +1,132 @@
+use crate::db;
+use sqlx::SqlitePool;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
+use tauri::AppHandle;
+use tauri_plugin_notification::NotificationExt;
+
+/// Check interval for pending notifications (in seconds)
+const CHECK_INTERVAL_SECS: u64 = 10;
+
+/// Notification scheduler that runs in a background thread
+pub struct NotificationScheduler {
+    pool: SqlitePool,
+    app: AppHandle,
+    is_running: Arc<Mutex<bool>>,
+}
+
+impl NotificationScheduler {
+    pub fn new(pool: SqlitePool, app: AppHandle) -> Self {
+        Self {
+            pool,
+            app,
+            is_running: Arc::new(Mutex::new(false)),
+        }
+    }
+
+    /// Start the background notification scheduler
+    /// Checks for pending notifications every 10 seconds
+    /// Returns self so it can be stored as Tauri state
+    pub fn start(self) -> Self {
+        let is_running = Arc::clone(&self.is_running);
+        let pool = self.pool.clone();
+        let app = self.app.clone();
+
+        *is_running.lock().unwrap() = true;
+
+        thread::spawn(move || {
+            loop {
+                // Check if we should still be running
+                if !*is_running.lock().unwrap() {
+                    break;
+                }
+                println!("NotificationScheduler: Checking for notifications...");
+                // Check for tasks that need notifications
+                if let Err(e) = check_and_notify_tasks(&pool, &app) {
+                    eprintln!("Error checking notifications: {}", e);
+                }
+
+                // Sleep before next check
+                thread::sleep(Duration::from_secs(CHECK_INTERVAL_SECS));
+            }
+        });
+
+        self
+    }
+
+    /// Stop the background scheduler
+    #[allow(dead_code)]
+    pub fn stop(&self) {
+        *self.is_running.lock().unwrap() = false;
+    }
+}
+
+/// Check for tasks that are due for notification and send them
+async fn check_and_notify_tasks_async(pool: &SqlitePool, app: &AppHandle) -> Result<(), String> {
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    // Get all unresolved tasks
+    let tasks = db::fetch_unresolved_tasks(&mut tx).await?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    let now = chrono::Utc::now();
+    let check_window = chrono::Duration::seconds(CHECK_INTERVAL_SECS as i64);
+
+    // Check each task to see if it's time to notify
+    for task in tasks {
+        let scheduled_time = chrono::DateTime::parse_from_rfc3339(&task.scheduled_at)
+            .map_err(|e| format!("Failed to parse scheduled_at: {}", e))?
+            .with_timezone(&chrono::Utc);
+
+        // If the scheduled time is within the current check window, send notification
+        if scheduled_time <= now {
+            if scheduled_time > now - check_window {
+                // notify imminent task
+                send_notification(app, &task, false)?;
+            } else {
+                // notify overdue task
+                send_notification(app, &task, true)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Synchronous wrapper for the async function (runs in background thread)
+fn check_and_notify_tasks(pool: &SqlitePool, app: &AppHandle) -> Result<(), String> {
+    // Create a new Tokio runtime for this thread
+    let rt = tokio::runtime::Runtime::new()
+        .map_err(|e| format!("Failed to create Tokio runtime: {}", e))?;
+
+    rt.block_on(check_and_notify_tasks_async(pool, app))
+}
+
+/// Send a notification for a task
+fn send_notification(
+    app: &AppHandle,
+    task: &crate::commands::Task,
+    nag: bool,
+) -> Result<(), String> {
+    let title = if nag {
+        "😡 Nagging!"
+    } else {
+        "📣 Reminder"
+    };
+
+    app.notification()
+        .builder()
+        .title(title)
+        .body(&task.description)
+        .show()
+        .map_err(|e| format!("Failed to send notification: {}", e))?;
+
+    println!(
+        "Notification sent for task {} ({})",
+        task.id, task.description
+    );
+
+    Ok(())
+}

@@ -27,7 +27,6 @@ pub async fn get_tasks(pool: State<'_, SqlitePool>) -> Result<Vec<Task>, String>
 
 #[tauri::command]
 pub async fn add_task(
-    app: tauri::AppHandle,
     pool: State<'_, SqlitePool>,
     description: String,
     scheduled_at: String,
@@ -44,11 +43,7 @@ pub async fn add_task(
 }
 
 #[tauri::command]
-pub async fn resolve_task(
-    app: tauri::AppHandle,
-    pool: State<'_, SqlitePool>,
-    id: i64,
-) -> Result<(), String> {
+pub async fn resolve_task(pool: State<'_, SqlitePool>, id: i64) -> Result<(), String> {
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
     // Mark task as resolved in database
@@ -61,11 +56,7 @@ pub async fn resolve_task(
 }
 
 #[tauri::command]
-pub async fn remove_task(
-    app: tauri::AppHandle,
-    pool: State<'_, SqlitePool>,
-    id: i64,
-) -> Result<(), String> {
+pub async fn remove_task(pool: State<'_, SqlitePool>, id: i64) -> Result<(), String> {
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
     // Delete task from database

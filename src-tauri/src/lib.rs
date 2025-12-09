@@ -1,19 +1,16 @@
 use sqlx::SqlitePool;
+use std::sync::Arc;
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconEvent},
-    Manager,
+    Manager, RunEvent,
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tokio::runtime::Runtime;
 
 mod commands;
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+mod db;
+mod scheduler;
 
 #[cfg(debug_assertions)]
 const DB_FILE_NAME: &str = "test.db";
@@ -34,7 +31,7 @@ pub fn run() {
         kind: MigrationKind::Up,
     }];
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(&format!("sqlite:{}", DB_FILE_NAME), migrations)
@@ -57,10 +54,17 @@ pub fn run() {
                         .await
                         .expect("Failed to connect DB")
                 });
+
+                // Start notification scheduler
+                let scheduler =
+                    scheduler::NotificationScheduler::new(pool.clone(), app_handle.clone());
+                let scheduler = Arc::new(scheduler.start());
+
                 app.manage(pool);
+                app.manage(scheduler);
 
                 // TrayIcon 설정
-                tauri::tray::TrayIconBuilder::new()
+                tauri::tray::TrayIconBuilder::with_id("naggy-tray-icon")
                     .on_tray_icon_event(|tray_handle, event| {
                         tauri_plugin_positioner::on_tray_event(tray_handle.app_handle(), &event);
                     })
@@ -88,33 +92,68 @@ pub fn run() {
             TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
+                position,
                 ..
             } => {
                 println!("Tray icon clicked");
                 if let Some(win) = tray_handle.app_handle().get_webview_window("main") {
                     if win.is_visible().unwrap_or(false) {
+                        println!("Hiding window");
                         let _ = win.hide();
                     } else {
-                        // TODO: fullscreen 일 때 처리
-                        let _ = win
-                            .as_ref()
-                            .window()
-                            .move_window(Position::TrayBottomCenter);
+                        let monitor = win.current_monitor().unwrap().unwrap();
+                        let monitor_width = monitor.size().width as f64;
+                        println!("Monitor width: {}", monitor_width);
+                        println!("Tray position X: {:?}", position.x);
+
+                        let available_width = monitor_width - position.x;
+                        println!("Available width: {}", available_width);
+
+                        if available_width < 500.0 {
+                            println!("Not enough space to the right, moving to top right corner");
+                            let _ = win.move_window_constrained(Position::TopRight);
+                        } else {
+                            println!("Enough space to the right, moving to tray bottom center");
+                            let _ = win.move_window_constrained(Position::TrayBottomCenter);
+                        }
+
                         let _ = win.show();
                         let _ = win.set_focus();
                     }
                 }
             }
             _ => {}
-        })
+        });
+
+    let app = builder
         .invoke_handler(tauri::generate_handler![
             commands::get_tasks,
-            greet,
-            commands::reserve_notification,
             commands::add_task,
             commands::resolve_task,
             commands::remove_task,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle, event| {
+        match event {
+            RunEvent::ExitRequested { api, code, .. } => {
+                // Keep the event loop running even if all windows are closed
+                // This allow us to catch tray icon events when there is no window
+                // if we manually requested an exit (code is Some(_)) we will let it go through
+                if code.is_none() {
+                    api.prevent_exit();
+                } else {
+                    println!("Exiting with code {}", code.unwrap());
+                    println!("Stopping background tasks...");
+
+                    // Retrieve scheduler from state and stop it
+                    if let Some(scheduler) = app_handle.try_state::<Arc<scheduler::NotificationScheduler>>() {
+                        scheduler.stop();
+                    }
+                }
+            }
+            _ => (),
+        }
+    });
 }

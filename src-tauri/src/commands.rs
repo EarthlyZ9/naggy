@@ -67,3 +67,21 @@ pub async fn remove_task(pool: State<'_, SqlitePool>, id: i64) -> Result<(), Str
     println!("Task {} removed", id);
     Ok(())
 }
+
+#[tauri::command]
+pub async fn update_task(
+    pool: State<'_, SqlitePool>,
+    id: i64,
+    description: Option<String>,
+    scheduled_at: Option<String>,
+) -> Result<(), String> {
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    // Update task in database
+    db::update_task(&mut tx, id, description, scheduled_at).await?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    println!("Task {} updated", id);
+    Ok(())
+}

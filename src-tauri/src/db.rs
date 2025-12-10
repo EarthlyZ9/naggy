@@ -1,5 +1,5 @@
-use sqlx::{Row, Transaction, Sqlite};
 use crate::commands::Task;
+use sqlx::{Row, Sqlite, Transaction};
 
 /// Insert a new task into the database
 /// Returns the created task with its ID
@@ -34,9 +34,7 @@ pub async fn insert_task(
 }
 
 /// Fetch all unresolved tasks from the database
-pub async fn fetch_unresolved_tasks(
-    tx: &mut Transaction<'_, Sqlite>,
-) -> Result<Vec<Task>, String> {
+pub async fn fetch_unresolved_tasks(tx: &mut Transaction<'_, Sqlite>) -> Result<Vec<Task>, String> {
     let rows = sqlx::query(
         "SELECT id, description, scheduled_at, resolved FROM task WHERE resolved = 0 ORDER BY scheduled_at ASC",
     )
@@ -58,10 +56,7 @@ pub async fn fetch_unresolved_tasks(
 }
 
 /// Mark a task as resolved in the database
-pub async fn mark_task_resolved(
-    tx: &mut Transaction<'_, Sqlite>,
-    id: i64,
-) -> Result<(), String> {
+pub async fn mark_task_resolved(tx: &mut Transaction<'_, Sqlite>, id: i64) -> Result<(), String> {
     sqlx::query("UPDATE task SET resolved = 1 WHERE id = ?")
         .bind(&id)
         .execute(&mut **tx)
@@ -72,12 +67,52 @@ pub async fn mark_task_resolved(
 }
 
 /// Delete a task from the database
-pub async fn delete_task(
-    tx: &mut Transaction<'_, Sqlite>,
-    id: i64,
-) -> Result<(), String> {
+pub async fn delete_task(tx: &mut Transaction<'_, Sqlite>, id: i64) -> Result<(), String> {
     sqlx::query("DELETE FROM task WHERE id = ?")
         .bind(&id)
+        .execute(&mut **tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Update a task in the database
+/// Updates description and/or scheduled_at if provided (not null)
+pub async fn update_task(
+    tx: &mut Transaction<'_, Sqlite>,
+    id: i64,
+    description: Option<String>,
+    scheduled_at: Option<String>,
+) -> Result<(), String> {
+    // Build dynamic UPDATE query based on what fields are provided
+    let mut updates = Vec::new();
+    let mut params: Vec<String> = Vec::new();
+
+    if let Some(desc) = description {
+        updates.push("description = ?");
+        params.push(desc);
+    }
+
+    if let Some(sched) = scheduled_at {
+        updates.push("scheduled_at = ?");
+        params.push(sched);
+    }
+
+    // If no fields to update, return early
+    if updates.is_empty() {
+        return Ok(());
+    }
+
+    let query_str = format!("UPDATE task SET {} WHERE id = ?", updates.join(", "));
+
+    let mut query = sqlx::query(&query_str);
+    for param in params {
+        query = query.bind(param);
+    }
+    query = query.bind(id);
+
+    query
         .execute(&mut **tx)
         .await
         .map_err(|e| e.to_string())?;

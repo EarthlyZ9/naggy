@@ -36,3 +36,15 @@ export const resolveTask = async (taskId: number) => {
 export const removeTask = async (taskId: number) => {
   await invoke('remove_task', { id: taskId });
 };
+
+export const updateTask = async (
+  taskId: number,
+  description: string | null,
+  scheduledAt: Date | null
+) => {
+  await invoke('update_task', {
+    id: taskId,
+    description: description,
+    scheduledAt: scheduledAt ? scheduledAt.toISOString() : null,
+  });
+};

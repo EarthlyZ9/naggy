@@ -80,7 +80,10 @@ pub fn run() {
             if let tauri::WindowEvent::Focused(focused) = event {
                 if !*focused {
                     println!("Window unfocused");
-                    let _ = window.hide();
+                    #[cfg(not(debug_assertions))]
+                    {
+                        let _ = window.hide();
+                    }
                 }
             };
             if let tauri::WindowEvent::Destroyed = event {
@@ -131,6 +134,7 @@ pub fn run() {
             commands::add_task,
             commands::resolve_task,
             commands::remove_task,
+            commands::update_task,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

@@ -5,24 +5,23 @@ function TaskList({
   tasks,
   taskResolver,
   taskRemover,
+  taskUpdater,
 }: {
   tasks: Task[];
   taskResolver: (taskId: number) => Promise<void>;
   taskRemover: (taskId: number) => Promise<void>;
+  taskUpdater?: () => Promise<void>;
 }) {
-  // remove task from the list
-  const handleResolve = async (taskId: number) => {
-    await taskResolver(taskId);
-  };
-
-  const handleRemove = async (taskId: number) => {
-    await taskRemover(taskId);
-  };
-
   return (
     <div>
       {tasks.map((t) => (
-        <TaskCard task={t} onResolved={handleResolve} onRemove={handleRemove} key={t.id} />
+        <TaskCard
+          task={t}
+          onResolved={taskResolver}
+          onRemove={taskRemover}
+          onUpdate={taskUpdater}
+          key={t.id}
+        />
       ))}
     </div>
   );

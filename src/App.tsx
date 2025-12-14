@@ -115,6 +115,11 @@ function App() {
     setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
   }
 
+  async function onTaskUpdate() {
+    const fetchedTasks = await getTasks();
+    setTasks(fetchedTasks || []);
+  }
+
   return (
     <main className="container">
       <Navbar />
@@ -155,7 +160,12 @@ function App() {
           </form>
         </Form>
         <Separator className="m-3" />
-        <TaskList tasks={tasks} taskResolver={onTaskResolve} taskRemover={onTaskRemove} />
+        <TaskList
+          tasks={tasks}
+          taskResolver={onTaskResolve}
+          taskRemover={onTaskRemove}
+          taskUpdater={onTaskUpdate}
+        />
       </div>
     </main>
   );

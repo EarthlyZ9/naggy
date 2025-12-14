@@ -9,6 +9,12 @@ use tauri_plugin_notification::NotificationExt;
 /// Check interval for pending notifications (in seconds)
 const CHECK_INTERVAL_SECS: u64 = 10;
 
+#[cfg(debug_assertions)]
+const NAG_INTERVAL_SECS: u64 = 60; // 1 minute in debug mode
+
+#[cfg(not(debug_assertions))]
+const NAG_INTERVAL_SECS: u64 = 300; // 5 minutes in release mode
+
 /// Notification scheduler that runs in a background thread
 pub struct NotificationScheduler {
     pool: SqlitePool,
@@ -72,7 +78,6 @@ async fn check_and_notify_tasks_async(pool: &SqlitePool, app: &AppHandle) -> Res
     tx.commit().await.map_err(|e| e.to_string())?;
 
     let now = chrono::Utc::now();
-    let check_window = chrono::Duration::seconds(CHECK_INTERVAL_SECS as i64);
 
     // Check each task to see if it's time to notify
     for task in tasks {
@@ -82,12 +87,17 @@ async fn check_and_notify_tasks_async(pool: &SqlitePool, app: &AppHandle) -> Res
 
         // If the scheduled time is within the current check window, send notification
         if scheduled_time <= now {
+            let check_window = chrono::Duration::seconds(CHECK_INTERVAL_SECS as i64);
+            let nag_window = chrono::Duration::seconds(NAG_INTERVAL_SECS as i64);
             if scheduled_time > now - check_window {
                 // notify imminent task
                 send_notification(app, &task, false)?;
-            } else {
-                // notify overdue task
-                send_notification(app, &task, true)?;
+            } else if now - scheduled_time >= nag_window {
+                // notify overdue task - send notification at regular intervals
+                let elapsed_seconds = (now - scheduled_time).num_seconds();
+                if elapsed_seconds % (NAG_INTERVAL_SECS as i64) <= CHECK_INTERVAL_SECS as i64 {
+                    send_notification(app, &task, true)?;
+                }
             }
         }
     }
@@ -124,8 +134,8 @@ fn send_notification(
         .map_err(|e| format!("Failed to send notification: {}", e))?;
 
     println!(
-        "Notification sent for task {} ({})",
-        task.id, task.description
+        "Notification sent for task {} ({}) | title: {}",
+        task.id, task.description, title
     );
 
     Ok(())

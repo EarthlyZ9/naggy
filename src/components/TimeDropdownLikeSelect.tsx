@@ -1,6 +1,6 @@
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandGroup, CommandItem } from '@/components/ui/command';
-import { Input } from '@/components/ui/input';
+import { TimeInput } from './TimeInput';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -9,56 +9,22 @@ import { TIME_PRESETS } from '@/types';
 export function TimeDropdownLikeSelect({ field }: { field: any }) {
   const [open, setOpen] = useState(false);
   const [customPopoverOpen, setCustomPopoverOpen] = useState(false);
-  const [inputValue, setInputValue] = useState('1200');
-  const [isInvalid, setIsInvalid] = useState(false);
 
   const handleSelect = (val: string) => {
     field.onChange(val);
     setOpen(false);
     setCustomPopoverOpen(false);
-    setIsInvalid(false);
   };
 
-  const formatTimeInput = (value: string) => {
-    // Remove non-numeric characters
-    const numeric = value.replace(/\D/g, '');
-    // Limit to 4 digits
-    const limited = numeric.slice(0, 4);
-    // Format as HH:MM
-    if (limited.length <= 2) {
-      return limited;
-    }
-    return limited.slice(0, 2) + ':' + limited.slice(2);
-  };
-
-  const validateTime = (value: string): boolean => {
-    if (value.length < 4) return false;
-
-    const hours = parseInt(value.slice(0, 2) || '0', 10);
-    const minutes = parseInt(value.slice(2, 4) || '0', 10);
-
-    return hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60;
-  };
-
-  const handleTimeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const numericOnly = e.target.value.replace(/\D/g, '');
-    const limited = numericOnly.slice(0, 4);
-    setInputValue(limited);
-
-    if (limited.length === 4) {
-      setIsInvalid(!validateTime(limited));
-    } else {
-      setIsInvalid(false);
+  const handleCustomTimeBlur = (time: string) => {
+    if (time) {
+      handleSelect(time);
     }
   };
 
-  const handleTimeInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && isInvalid === false) {
-      const hours = parseInt(inputValue.slice(0, 2) || '0', 10);
-      const minutes = parseInt(inputValue.slice(2, 4) || '0', 10);
-
-      const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-      handleSelect(formattedTime);
+  const handleCustomTimeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
     }
   };
 
@@ -119,16 +85,11 @@ export function TimeDropdownLikeSelect({ field }: { field: any }) {
                   onMouseEnter={() => setCustomPopoverOpen(true)}
                   onMouseLeave={() => setCustomPopoverOpen(false)}
                 >
-                  <Input
-                    type="text"
-                    placeholder="HH:MM"
-                    value={formatTimeInput(inputValue)}
-                    onChange={handleTimeInputChange}
-                    onKeyDown={handleTimeInputKeyDown}
-                    className={clsx(
-                      'w-inherit h-8 text-xs text-center',
-                      isInvalid && 'border-red-400 focus-visible:ring-red-400 focus-visible:ring-2'
-                    )}
+                  <TimeInput
+                    initialTime={new Date().toISOString()}
+                    onBlur={handleCustomTimeBlur}
+                    onKeyDown={handleCustomTimeKeyDown}
+                    className="w-inherit h-8"
                     autoFocus
                   />
                 </PopoverContent>

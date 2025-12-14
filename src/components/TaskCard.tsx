@@ -2,17 +2,25 @@ import { Task } from '@/types';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
-import { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { updateTask } from '@/api';
+import { Input } from './ui/input';
+import { TimeInput } from './TimeInput';
 
 function TaskCard({
   task,
   onResolved,
   onRemove,
+  onUpdate,
 }: {
   task: Task;
   onResolved: (taskId: number) => Promise<void>;
   onRemove: (taskId: number) => Promise<void>;
+  onUpdate?: () => Promise<void>;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingTime, setIsEditingTime] = useState(false);
+
   const formatDateTime = (dtStr: string) => {
     const localTime = new Date(dtStr);
     return localTime.getHours().toString() + ':' + localTime.getMinutes().toString();
@@ -24,16 +32,97 @@ function TaskCard({
     return now > scheduled ? 'bg-red-400' : '';
   };
 
+  const handleDoubleClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    setIsEditing(true);
+    e.currentTarget.focus();
+  };
+
+  const handleBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+    setIsEditing(false);
+    const newDescription = e.currentTarget.value.trim();
+    if (newDescription !== task.description && newDescription !== '') {
+      await updateTask(task.id, newDescription, null);
+      if (onUpdate) {
+        await onUpdate();
+      }
+    } else {
+      e.currentTarget.value = task.description;
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    } else if (e.key === 'Escape') {
+      e.currentTarget.value = task.description;
+      setIsEditing(false);
+      e.currentTarget.blur();
+    }
+  };
+
+  const handleTimeDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    setIsEditingTime(true);
+    e.currentTarget.focus();
+  };
+
+  const handleTimeBlur = async (newTime: string) => {
+    setIsEditingTime(false);
+    if (newTime && newTime.includes(':')) {
+      const [hours, minutes] = newTime.split(':').map(Number);
+      const newScheduledAt = new Date(task.scheduledAt);
+      newScheduledAt.setHours(hours, minutes, 0, 0);
+
+      if (newScheduledAt.toISOString() !== task.scheduledAt) {
+        await updateTask(task.id, null, newScheduledAt);
+        if (onUpdate) {
+          await onUpdate();
+        }
+      }
+    }
+  };
+
+  const handleTimeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    } else if (e.key === 'Escape') {
+      setIsEditingTime(false);
+    }
+  };
+
   const badgeStyle = useMemo(() => getBadgeStyle(task.scheduledAt), [task.scheduledAt]);
 
   return (
     <Card className="gap-2 px-1 py-[2px] my-1">
-      <CardContent className="flex flex-row items-center justify-between">
-        <Badge className={`w-[50px] ${badgeStyle}`} variant="outline" asChild={true}>
-          <p className="text-black text-sm">{formatDateTime(task.scheduledAt)}</p>
-        </Badge>
+      <CardContent className="flex flex-row items-center justify-between px-2">
+        {isEditingTime ? (
+          <TimeInput
+            initialTime={task.scheduledAt}
+            onBlur={handleTimeBlur}
+            onKeyDown={handleTimeKeyDown}
+            className="w-[70px] h-6 p-1"
+            autoFocus
+          />
+        ) : (
+          <Badge
+            className={`w-[50px] ${badgeStyle}`}
+            variant="outline"
+            asChild={true}
+            onDoubleClick={handleTimeDoubleClick}
+          >
+            <p className="text-black text-sm cursor-default">{formatDateTime(task.scheduledAt)}</p>
+          </Badge>
+        )}
         <div className="flex justify-start w-[400px] px-4">
-          <p className="text-sm font-light">{task.description}</p>
+          <Input
+            type="text"
+            defaultValue={task.description}
+            onDoubleClick={(e) => handleDoubleClick(e)}
+            onMouseDown={(e) => !isEditing && e.preventDefault()}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            readOnly={!isEditing}
+            className="cursor-default read-only:cursor-default border-0 p-2"
+          />
         </div>
         <Button variant="ghost" onClick={() => onResolved(task.id)}>
           <svg

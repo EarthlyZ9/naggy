@@ -1,3 +1,4 @@
+use log::debug;
 use serde::Serialize;
 use sqlx::SqlitePool;
 use tauri::State;
@@ -21,7 +22,7 @@ pub async fn get_tasks(pool: State<'_, SqlitePool>) -> Result<Vec<Task>, String>
 
     tx.commit().await.map_err(|e| e.to_string())?;
 
-    println!("tasks: {:?}", tasks);
+    debug!("tasks: {:?}", tasks);
     Ok(tasks)
 }
 
@@ -38,7 +39,7 @@ pub async fn add_task(
 
     tx.commit().await.map_err(|e| e.to_string())?;
 
-    println!("Task added: {:?}", task);
+    debug!("Task added: {:?}", task);
     Ok(task)
 }
 
@@ -51,7 +52,7 @@ pub async fn resolve_task(pool: State<'_, SqlitePool>, id: i64) -> Result<(), St
 
     tx.commit().await.map_err(|e| e.to_string())?;
 
-    println!("Task {} resolved", id);
+    debug!("Task {} resolved", id);
     Ok(())
 }
 
@@ -64,7 +65,7 @@ pub async fn remove_task(pool: State<'_, SqlitePool>, id: i64) -> Result<(), Str
 
     tx.commit().await.map_err(|e| e.to_string())?;
 
-    println!("Task {} removed", id);
+    debug!("Task {} removed", id);
     Ok(())
 }
 
@@ -82,6 +83,6 @@ pub async fn update_task(
 
     tx.commit().await.map_err(|e| e.to_string())?;
 
-    println!("Task {} updated", id);
+    debug!("Task {} updated", id);
     Ok(())
 }

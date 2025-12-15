@@ -30,3 +30,5 @@ tauri-plugin-notification = "2.3"
 chrono = { version = "0.4.42", features = ["serde"] }
 sqlx-sqlite = "0.8"
 sqlx = "0.8"
+tauri-plugin-log = "2"
+log = "0.4"

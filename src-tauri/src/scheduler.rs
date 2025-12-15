@@ -1,4 +1,6 @@
 use crate::db;
+use chrono;
+use log::{debug, error};
 use sqlx::SqlitePool;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -47,10 +49,10 @@ impl NotificationScheduler {
                 if !*is_running.lock().unwrap() {
                     break;
                 }
-                println!("NotificationScheduler: Checking for notifications...");
+                debug!("NotificationScheduler: Checking for notifications...");
                 // Check for tasks that need notifications
                 if let Err(e) = check_and_notify_tasks(&pool, &app) {
-                    eprintln!("Error checking notifications: {}", e);
+                    error!("Error checking notifications: {}", e);
                 }
 
                 // Sleep before next check
@@ -89,7 +91,7 @@ async fn check_and_notify_tasks_async(pool: &SqlitePool, app: &AppHandle) -> Res
         if scheduled_time <= now {
             let check_window = chrono::Duration::seconds(CHECK_INTERVAL_SECS as i64);
             let nag_window = chrono::Duration::seconds(NAG_INTERVAL_SECS as i64);
-            if scheduled_time > now - check_window {
+            if scheduled_time >= now - check_window {
                 // notify imminent task
                 send_notification(app, &task, false)?;
             } else if now - scheduled_time >= nag_window {
@@ -133,9 +135,11 @@ fn send_notification(
         .show()
         .map_err(|e| format!("Failed to send notification: {}", e))?;
 
-    println!(
+    debug!(
         "Notification sent for task {} ({}) | title: {}",
-        task.id, task.description, title
+        task.id,
+        task.description,
+        title
     );
 
     Ok(())

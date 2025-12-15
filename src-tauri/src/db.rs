@@ -112,10 +112,7 @@ pub async fn update_task(
     }
     query = query.bind(id);
 
-    query
-        .execute(&mut **tx)
-        .await
-        .map_err(|e| e.to_string())?;
+    query.execute(&mut **tx).await.map_err(|e| e.to_string())?;
 
     Ok(())
 }

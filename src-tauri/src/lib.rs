@@ -1,3 +1,4 @@
+use log::debug;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tauri::{
@@ -32,6 +33,11 @@ pub fn run() {
     }];
 
     let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_log::Builder::new()
+            .level(log::LevelFilter::Info)
+            // verbose logs only for the scheduler module
+            .level_for("naggy_lib::scheduler", log::LevelFilter::Debug)
+        .build())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(&format!("sqlite:{}", DB_FILE_NAME), migrations)
@@ -79,7 +85,7 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Focused(focused) = event {
                 if !*focused {
-                    println!("Window unfocused");
+                    debug!("Window unfocused");
                     #[cfg(not(debug_assertions))]
                     {
                         let _ = window.hide();
@@ -87,7 +93,7 @@ pub fn run() {
                 }
             };
             if let tauri::WindowEvent::Destroyed = event {
-                println!("Window destroyed");
+                debug!("Window destroyed");
                 let _ = window.hide();
             }
         })
@@ -98,25 +104,25 @@ pub fn run() {
                 position,
                 ..
             } => {
-                println!("Tray icon clicked");
+                debug!("Tray icon clicked");
                 if let Some(win) = tray_handle.app_handle().get_webview_window("main") {
                     if win.is_visible().unwrap_or(false) {
-                        println!("Hiding window");
+                        debug!("Hiding window");
                         let _ = win.hide();
                     } else {
                         let monitor = win.current_monitor().unwrap().unwrap();
                         let monitor_width = monitor.size().width as f64;
-                        println!("Monitor width: {}", monitor_width);
-                        println!("Tray position X: {:?}", position.x);
+                        debug!("Monitor width: {}", monitor_width);
+                        debug!("Tray position X: {:?}", position.x);
 
                         let available_width = monitor_width - position.x;
-                        println!("Available width: {}", available_width);
+                        debug!("Available width: {}", available_width);
 
                         if available_width < 500.0 {
-                            println!("Not enough space to the right, moving to top right corner");
+                            debug!("Not enough space to the right, moving to top right corner");
                             let _ = win.move_window_constrained(Position::TopRight);
                         } else {
-                            println!("Enough space to the right, moving to tray bottom center");
+                            debug!("Enough space to the right, moving to tray bottom center");
                             let _ = win.move_window_constrained(Position::TrayBottomCenter);
                         }
 
@@ -148,11 +154,13 @@ pub fn run() {
                 if code.is_none() {
                     api.prevent_exit();
                 } else {
-                    println!("Exiting with code {}", code.unwrap());
-                    println!("Stopping background tasks...");
+                    debug!("Exiting with code {}", code.unwrap());
+                    debug!("Stopping background tasks...");
 
                     // Retrieve scheduler from state and stop it
-                    if let Some(scheduler) = app_handle.try_state::<Arc<scheduler::NotificationScheduler>>() {
+                    if let Some(scheduler) =
+                        app_handle.try_state::<Arc<scheduler::NotificationScheduler>>()
+                    {
                         scheduler.stop();
                     }
                 }

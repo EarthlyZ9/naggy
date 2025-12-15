@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { useState, forwardRef, useEffect } from 'react';
 import clsx from 'clsx';
+import { formatTimeHHMM } from '@/lib/utils';
 
 interface TimeInputProps {
   initialTime: string;
@@ -17,10 +18,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
 
     useEffect(() => {
       // Convert ISO date string to HH:MM format
-      const localTime = new Date(initialTime);
-      const hours = localTime.getHours().toString().padStart(2, '0');
-      const minutes = localTime.getMinutes().toString().padStart(2, '0');
-      setValue(`${hours}:${minutes}`);
+      setValue(formatTimeHHMM(initialTime));
     }, [initialTime]);
 
     const formatTimeInput = (input: string): string => {

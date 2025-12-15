@@ -6,6 +6,7 @@ import React, { useMemo, useState } from 'react';
 import { updateTask } from '@/api';
 import { Input } from './ui/input';
 import { TimeInput } from './TimeInput';
+import { formatTimeHHMM } from '@/lib/utils';
 
 function TaskCard({
   task,
@@ -20,11 +21,6 @@ function TaskCard({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingTime, setIsEditingTime] = useState(false);
-
-  const formatDateTime = (dtStr: string) => {
-    const localTime = new Date(dtStr);
-    return localTime.getHours().toString() + ':' + localTime.getMinutes().toString();
-  };
 
   const getBadgeStyle = (scheduledAt: string) => {
     const now = new Date();
@@ -109,7 +105,7 @@ function TaskCard({
             asChild={true}
             onDoubleClick={handleTimeDoubleClick}
           >
-            <p className="text-black text-sm cursor-default">{formatDateTime(task.scheduledAt)}</p>
+            <p className="text-black text-sm cursor-default">{formatTimeHHMM(task.scheduledAt)}</p>
           </Badge>
         )}
         <div className="flex justify-start w-[400px] px-4">

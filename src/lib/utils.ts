@@ -7,6 +7,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Format a date string to HH:MM format
+ * @param dateStr - ISO date string or Date object
+ * @returns Time in HH:MM format with zero-padding
+ */
+export function formatTimeHHMM(dateStr: string | Date): string {
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+/**
  * Convert a TimePreset to a Date object
  * @param preset - The time preset ('10min', '30min', '1hour', '3hour')
  * @param baseDate - The base date to calculate from (defaults to now)

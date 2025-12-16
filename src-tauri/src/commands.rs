@@ -15,10 +15,17 @@ pub struct Task {
 }
 
 #[tauri::command]
-pub async fn get_tasks(pool: State<'_, SqlitePool>) -> Result<Vec<Task>, String> {
+pub async fn get_tasks(pool: State<'_, SqlitePool>, date: String) -> Result<Vec<Task>, String> {
+    // Parse the ISO datetime string from the client (already in UTC)
+    let datetime = chrono::DateTime::parse_from_rfc3339(&date)
+        .map_err(|e| format!("Failed to parse date: {}", e))?;
+
+    // Convert to UTC and extract the date portion
+    let utc_datetime = datetime.with_timezone(&chrono::Utc);
+
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
-    let tasks = db::fetch_unresolved_tasks(&mut tx).await?;
+    let tasks = db::fetch_unresolved_tasks(&mut tx, utc_datetime).await?;
 
     tx.commit().await.map_err(|e| e.to_string())?;
 

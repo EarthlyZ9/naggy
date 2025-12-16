@@ -11,8 +11,15 @@ export const checkNotificationPermission = async () => {
 };
 
 export const getTasks = async () => {
+  // Get the start of today in the user's local timezone
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Send as ISO string - the backend will convert to UTC
+  const todayStr = today.toISOString();
+  console.log('Fetching tasks for date:', todayStr);
   try {
-    const result = await invoke<Task[]>('get_tasks');
+    const result = await invoke<Task[]>('get_tasks', { date: todayStr });
     console.log(result); // TODO: remove this log
     return result;
   } catch (error) {

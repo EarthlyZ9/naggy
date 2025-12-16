@@ -34,10 +34,11 @@ pub async fn insert_task(
 }
 
 /// Fetch all unresolved tasks from the database
-pub async fn fetch_unresolved_tasks(tx: &mut Transaction<'_, Sqlite>) -> Result<Vec<Task>, String> {
+pub async fn fetch_unresolved_tasks(tx: &mut Transaction<'_, Sqlite>, date: chrono::DateTime<chrono::Utc>) -> Result<Vec<Task>, String> {
     let rows = sqlx::query(
-        "SELECT id, description, scheduled_at, resolved FROM task WHERE resolved = 0 ORDER BY scheduled_at ASC",
+        "SELECT id, description, scheduled_at, resolved FROM task WHERE resolved = 0 AND scheduled_at >= ? ORDER BY scheduled_at ASC",
     )
+    .bind(date.to_rfc3339())
     .fetch_all(&mut **tx)
     .await
     .map_err(|e| e.to_string())?;

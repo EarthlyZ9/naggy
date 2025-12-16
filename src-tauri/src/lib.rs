@@ -33,7 +33,7 @@ pub fn run() {
     }];
 
     let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_log::Builder::new()
+        .plugin(tauri_plugin_log::Builder::new() 
             .level(log::LevelFilter::Info)
             // verbose logs only for the scheduler module
             .level_for("naggy_lib::scheduler", log::LevelFilter::Debug)

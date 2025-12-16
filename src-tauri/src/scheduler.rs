@@ -1,5 +1,5 @@
 use crate::db;
-use chrono;
+use chrono::{self, TimeZone};
 use log::{debug, error};
 use sqlx::SqlitePool;
 use std::sync::{Arc, Mutex};
@@ -75,7 +75,13 @@ async fn check_and_notify_tasks_async(pool: &SqlitePool, app: &AppHandle) -> Res
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
     // Get all unresolved tasks
-    let tasks = db::fetch_unresolved_tasks(&mut tx).await?;
+    // 1. Get system time (timezone aware)
+    let local_now = chrono::Local::now();
+    // 2. Change the time to start of day (0 hour, 0 min, 0 sec)
+    let local_datetime = local_now.date_naive().and_hms_opt(0, 0, 0).unwrap();
+    // 3. Convert to UTC
+    let today = chrono::Local.from_local_datetime(&local_datetime).unwrap().with_timezone(&chrono::Utc);
+    let tasks = db::fetch_unresolved_tasks(&mut tx, today).await?;
 
     tx.commit().await.map_err(|e| e.to_string())?;
 
